@@ -8,6 +8,10 @@ pd.set_option("display.float_format", "{:,.0f}".format)
 @st.fragment
 def display_filter_data():
     data = load_data()
+    
+    st.title('📊 Szűrt adatok')
+    st.write("Az alábbi táblázat tartalmazza a szűrt közbeszerzési adatokat.")
+    
     data['tam_dont_datum'] = pd.to_datetime(data['szerzodesKelte'], format='mixed')
     
     # Szűrők beállítása három oszlopban
