@@ -7,7 +7,10 @@ st.title("📊 Közbeszerzési elemzés")
 st.markdown(  
     """Ebben az alkalmazásban a közbeszerzések adatait elemzem, egységesített és könnyen összehasonlítható formában.  
 
+## Az adatok forrása az [Elektronikus Közbeszerzési Rendszer]('https://ekr.gov.hu/ekr-szerzodestar/hu/szerzodesLista') honlapja.
+    
 ## 🔍 Hogyan készült az adatbázis?  
+
 
 ✔️ **Minden közbeszerzés értékét forintra váltottam**, ha az eredetileg más devizában szerepelt.  
 &nbsp;&nbsp;&nbsp;➝ Az átváltás mindig **az adott napi árfolyamon** történt, amikor a közbeszerzést kihirdették.  
@@ -15,7 +18,7 @@ st.markdown(
 ✔️ **Bruttóból nettó számítás**  
 &nbsp;&nbsp;&nbsp;➝ Ha az összeg nettóban volt megadva,akkor azt vettem figyelembe.  
 
-➝ Ha az összeg bruttóban volt megadva, **a 27%-os áfát levonva nettósítottam** (szorozva 0.73-tel).  
+➝ Ha az összeg bruttóban volt megadva, **a 27%-os áfát levonva nettósítottam** (osztva 1,27-tel).  
 
 ## 📈 Mit találsz itt?  
 
