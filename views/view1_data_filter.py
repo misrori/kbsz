@@ -43,6 +43,32 @@ def display_filter_data():
     
     st.write("Az alábbi táblázat tartalmazza a szűrt közbeszerzési adatokat:")
 
+    # rename the columnsto nicely hungarian string to show to the user vezetoAjanlatkero, vezetoAjanlattevo, szerzodesTargya, nettoOsszegHUF, nettoOsszeg, bruttoOsszeg, id, ekrAzonosito, megelozoBeszerzesNev, szerzodesKelte, allapotaNev, szerzodesek_szama, hatalyossagKezdete, hatalyossagVege, bruttoOsszegDevizaneme, nettoOsszegDevizaneme, tartalekkeretOsszeg, tartalekkeretOsszegDevizaneme, tipusaNev, uniosForrasbolFinanszirozott, voltAlvallalkozoja, link do it with rename
+    data = data.rename(columns={'vezetoAjanlatkero': 'Ajánlatkérő', 
+                                'vezetoAjanlattevo': 'Ajánlattevő', 
+                                'szerzodesTargya': 'Szerződés tárgya',
+                                'nettoOsszegHUF': 'Nettó összeg (HUF)', 
+                                'nettoOsszeg': 'Nettó összeg', 
+                                'bruttoOsszeg': 'Bruttó összeg', 
+                                'ekrAzonosito': 'EKR azonosító', 
+                                'megelozoBeszerzesNev': 'Megelőző beszerzés neve', 
+                                'szerzodesKelte': 'Szerződés kelte', 
+                                'allapotaNev': 'Állapota neve', 
+                                'szerzodesek_szama': 'Szerződések száma', 
+                                'hatalyossagKezdete': 'Hatalyosság kezdete', 
+                                'hatalyossagVege': 'Hatalyosság vége', 
+                                'bruttoOsszegDevizaneme': 'Bruttó összeg devizaneme', 
+                                'nettoOsszegDevizaneme': 'Nettó összeg devizaneme', 
+                                'tartalekkeretOsszeg': 'Tartalékkeret összeg', 
+                                'tartalekkeretOsszegDevizaneme': 'Tartalékkeret összeg devizaneme', 
+                                'tipusaNev': 'Típus neve', 
+                                'uniosForrasbolFinanszirozott': 'Uniós forrásból finanszírozott', 
+                                'voltAlvallalkozoja': 'Volt alvállalkozója',
+                                'tam_dont_datum': 'Támogatási döntés dátuma',
+                                'year_month': 'Év-hónap',
+                                'link': 'Link'})  
+
+
     st.data_editor(
     data,
     column_config={
