@@ -6,7 +6,7 @@ import numpy as np
 pd.set_option("display.float_format", "{:,.0f}".format)
 
 @st.fragment
-def display_full_data():
+def display_filter_data():
     data = load_data()
     data['tam_dont_datum'] = pd.to_datetime(data['szerzodesKelte'], format='mixed')
     
@@ -42,7 +42,19 @@ def display_full_data():
     data['bruttoOsszeg'] = data['bruttoOsszeg'].apply(lambda x: f"{x:,}".replace(",", " ").replace(".0", ""))
     
     st.write("Az alábbi táblázat tartalmazza a szűrt közbeszerzési adatokat:")
-    st.data_editor(data, hide_index=True)
+
+    st.data_editor(
+    data,
+    column_config={
+        "Link": st.column_config.LinkColumn(
+            "Link",
+            help="more info",
+            display_text="Részletek",
+        ),
+    },
+    hide_index=True,
+    )
+
     st.write("📊 A szűrt adatbázis mérete: ", data.shape)
 
-display_full_data()
+display_filter_data()
