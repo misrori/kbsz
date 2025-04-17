@@ -100,7 +100,7 @@ def export_egyeni_hallo():
 
         if len(network_df) > 0:
             # generate network with the template
-            template_path = '/templates/network_template.html'
+            template_path = 'templates/network_template.html'
             output_path = 'temp_network.html'
             generate_network_html(network_df.to_dict('records'), template_path, output_path)
 
