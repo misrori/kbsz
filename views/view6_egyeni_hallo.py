@@ -21,7 +21,7 @@ def display_egyeni_hallo():
     # 📌 Legördülő lista a cégek kiválasztására
     sorted_companies = pd.concat([
         pd.Series(data['vezetoAjanlatkero'].unique()),  # Átalakítjuk Series típusra
-        pd.Series(data['vezetoAjanlattevo'].unique())  # Átalakítjuk Series típusra
+        pd.Series(data['nyertes'].unique())  # Átalakítjuk Series típusra
     ]).unique()  # Minden cég az ajánlatkérők és ajánlattevők oszlopából
 
     # 📌 Kiválasztott cégek
@@ -41,7 +41,7 @@ def display_egyeni_hallo():
     if start_button:
         # 📌 Adatok szűrése a kiválasztott cégekre
         filtered_data = data[
-            data['vezetoAjanlatkero'].isin(selected_companies) | data['vezetoAjanlattevo'].isin(selected_companies)
+            data['vezetoAjanlatkero'].isin(selected_companies) | data['nyertes'].isin(selected_companies)
         ]
 
         if direct_connections_only==False:
@@ -49,17 +49,17 @@ def display_egyeni_hallo():
             additional_companies = selected_companies
         else:
             # 📌 További cégek hozzáadása, melyek kapcsolódnak a kiválasztott cégekhez
-            additional_companies = set(filtered_data['vezetoAjanlatkero']).union(filtered_data['vezetoAjanlattevo'])
+            additional_companies = set(filtered_data['vezetoAjanlatkero']).union(filtered_data['nyertes'])
 
         # 📌 Adatok újra szűrése, hogy a kiválasztott cégek és azok kapcsolatai kerüljenek be
         full_filtered_data = data[
-            data['vezetoAjanlatkero'].isin(additional_companies) | data['vezetoAjanlattevo'].isin(additional_companies)
+            data['vezetoAjanlatkero'].isin(additional_companies) | data['nyertes'].isin(additional_companies)
         ]
 
         # 📌 Adatok aggregálása
         edges = (
             full_filtered_data
-            .groupby(['vezetoAjanlatkero', 'vezetoAjanlattevo'], as_index=False)
+            .groupby(['vezetoAjanlatkero', 'nyertes'], as_index=False)
             .agg(
                 megitelt_tamogatas=('nettoOsszegHUF', 'sum'),
                 weight=('ekrAzonosito', 'count')
@@ -70,7 +70,7 @@ def display_egyeni_hallo():
 
         # 📌 Kiutalt (OUT) és beérkező (IN) pénz összegyűjtése
         node_money_out = edges.groupby("vezetoAjanlatkero")["megitelt_tamogatas"].sum().to_dict()
-        node_money_in = edges.groupby("vezetoAjanlattevo")["megitelt_tamogatas"].sum().to_dict()
+        node_money_in = edges.groupby("nyertes")["megitelt_tamogatas"].sum().to_dict()
 
         # 📌 Maximális értékek skálázáshoz
         max_money_out = max(node_money_out.values(), default=1)
@@ -81,7 +81,7 @@ def display_egyeni_hallo():
         G = nx.DiGraph()
 
         for _, row in edges.iterrows():
-            G.add_edge(row["vezetoAjanlatkero"], row["vezetoAjanlattevo"], weight=row["weight"], money=row["megitelt_tamogatas"])
+            G.add_edge(row["vezetoAjanlatkero"], row["nyertes"], weight=row["weight"], money=row["megitelt_tamogatas"])
 
         # 📌 Pyvis hálózat beállítása
         net = Network(height="1200px", width="100%", directed=True, notebook=False)
@@ -91,7 +91,7 @@ def display_egyeni_hallo():
         # Kiválasztott cégek
         selected_set = set(selected_companies)
 
-        for node in set(edges["vezetoAjanlatkero"]).union(edges["vezetoAjanlattevo"]):
+        for node in set(edges["vezetoAjanlatkero"]).union(edges["nyertes"]):
             money_sent = node_money_out.get(node, 0)  # Kiutalt pénz
             money_received = node_money_in.get(node, 0)  # Beérkező pénz
             if size_option == "Kiutalt pénz":

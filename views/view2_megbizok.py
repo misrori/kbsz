@@ -56,7 +56,7 @@ def display_megbizok():
         data
         .groupby('vezetoAjanlatkero')
         .agg(
-            nyertesek_szama = ('vezetoAjanlattevo', 'nunique'),
+            nyertesek_szama = ('nyertes', 'nunique'),
             szerzodesek_szama = ('ekrAzonosito', 'count'),
             osszes_megbizas_osszege = ('nettoOsszegHUF', 'sum'),
             

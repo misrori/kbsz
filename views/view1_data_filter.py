@@ -12,7 +12,6 @@ def display_filter_data():
     st.title('📊 Szűrt adatok')
     st.write("Az alábbi táblázat tartalmazza a szűrt közbeszerzési adatokat.")
     
-    data['tam_dont_datum'] = pd.to_datetime(data['szerzodesKelte'], format='mixed')
     
     # Szűrők beállítása három oszlopban
     col1, col2 = st.columns(2)
@@ -21,7 +20,7 @@ def display_filter_data():
         ajanlatkero_filter = st.multiselect("Válasszon ajánlatkérőt:", sorted(data['vezetoAjanlatkero'].dropna().unique().tolist()), placeholder="Válassz a ajánlat kérőt!")
 
     with col2:
-        ajanlattevo_filter = st.multiselect("Válasszon ajánlattevőt:", sorted(data['vezetoAjanlattevo'].dropna().unique().tolist()),  placeholder="Válassz ajánlat tevőt!")
+        ajanlattevo_filter = st.multiselect("Válasszon ajánlattevőt:", sorted(data['nyertes'].dropna().unique().tolist()),  placeholder="Válassz ajánlat tevőt!")
     
     osszeg_filter = st.checkbox('Szűrés nettó összeg alapján')
     if osszeg_filter:
@@ -35,23 +34,28 @@ def display_filter_data():
         data = data[data['vezetoAjanlatkero'].isin(ajanlatkero_filter)]
     
     if ajanlattevo_filter:
-        data = data[data['vezetoAjanlattevo'].isin(ajanlattevo_filter)]
+        data = data[data['nyertes'].isin(ajanlattevo_filter)]
     
     if osszeg_filter:
         data = data[(data['nettoOsszegHUF'] >= min_osszeg) & (data['nettoOsszegHUF'] <= max_osszeg)]
+
+    data.sort_values('nettoOsszegHUF', ascending=False, inplace=True)
+
     
     # Adatok formázása
     data['nettoOsszegHUF'] = data['nettoOsszegHUF'].apply(lambda x: f"{x:,}".replace(",", " ").replace(".0", ""))
     data['nettoOsszeg'] = data['nettoOsszeg'].apply(lambda x: f"{x:,}".replace(",", " ").replace(".0", ""))
     data['bruttoOsszeg'] = data['bruttoOsszeg'].apply(lambda x: f"{x:,}".replace(",", " ").replace(".0", ""))
-    
+
+
     st.write("Az alábbi táblázat tartalmazza a szűrt közbeszerzési adatokat:")
 
-    # rename the columnsto nicely hungarian string to show to the user vezetoAjanlatkero, vezetoAjanlattevo, szerzodesTargya, nettoOsszegHUF, nettoOsszeg, bruttoOsszeg, id, ekrAzonosito, megelozoBeszerzesNev, szerzodesKelte, allapotaNev, szerzodesek_szama, hatalyossagKezdete, hatalyossagVege, bruttoOsszegDevizaneme, nettoOsszegDevizaneme, tartalekkeretOsszeg, tartalekkeretOsszegDevizaneme, tipusaNev, uniosForrasbolFinanszirozott, voltAlvallalkozoja, link do it with rename
+    # rename the columns to nicely hungarian string to swith rename
     data = data.rename(columns={'vezetoAjanlatkero': 'Ajánlatkérő', 
-                                'vezetoAjanlattevo': 'Ajánlattevő', 
+                                'nyertes': 'Nyertes', 
+                                'nyertes_tipus': 'Nyertes típus',
                                 'szerzodesTargya': 'Szerződés tárgya',
-                                'nettoOsszegHUF': 'Nettó összeg (HUF)', 
+                                'nettoOsszegHUF': 'Nettó összeg (Ft)', 
                                 'nettoOsszeg': 'Nettó összeg', 
                                 'bruttoOsszeg': 'Bruttó összeg', 
                                 'ekrAzonosito': 'EKR azonosító', 
@@ -70,8 +74,18 @@ def display_filter_data():
                                 'voltAlvallalkozoja': 'Volt alvállalkozója',
                                 'tam_dont_datum': 'Támogatási döntés dátuma',
                                 'year_month': 'Év-hónap',
+                                'ajanlatkerok_szama': 'Ajánlatkérők száma',
+                                'ajanlat_tevok_szama': 'Ajánlattevők száma',
+                                'tamogatas_aranya': 'Támogatás aránya',
+                                'nyertes_adoszama': 'Nyertes adószáma',
+                                'megbizo_adoszama': 'Megbízó adószáma',
                                 'link': 'Link'})  
-
+    
+    # order
+    important_cols = ['Ajánlatkérő', 'Nyertes', 'Nettó összeg (Ft)', 'Szerződés tárgya', 'Nyertes típus']
+    # add the columns to the front
+    data = data.reindex(columns=important_cols + [col for col in data.columns if col not in important_cols])
+    
 
     st.data_editor(
     data,

@@ -26,7 +26,7 @@ def display_nyertes_hallo():
         # 📌 Adatok aggregálása
         edges = (
             data
-            .groupby(['vezetoAjanlatkero', 'vezetoAjanlattevo'], as_index=False)
+            .groupby(['vezetoAjanlatkero', 'nyertes'], as_index=False)
             .agg(
                 megitelt_tamogatas=('nettoOsszegHUF', 'sum'),
                 weight=('ekrAzonosito', 'count')
@@ -37,13 +37,13 @@ def display_nyertes_hallo():
         )
 
         # 📌 Legtöbb pénzmozgással rendelkező csomópontok kiválasztása
-        all_nodes = pd.concat([edges["vezetoAjanlatkero"], edges["vezetoAjanlattevo"]])
+        all_nodes = pd.concat([edges["vezetoAjanlatkero"], edges["nyertes"]])
         top_nodes = all_nodes.value_counts().head(num_nodes).index
-        edges = edges[edges["vezetoAjanlatkero"].isin(top_nodes) & edges["vezetoAjanlattevo"].isin(top_nodes)]
+        edges = edges[edges["vezetoAjanlatkero"].isin(top_nodes) & edges["nyertes"].isin(top_nodes)]
 
         # 📌 Kiutalt (OUT) és beérkező (IN) pénz összegyűjtése
         node_money_out = edges.groupby("vezetoAjanlatkero")["megitelt_tamogatas"].sum().to_dict()
-        node_money_in = edges.groupby("vezetoAjanlattevo")["megitelt_tamogatas"].sum().to_dict()
+        node_money_in = edges.groupby("nyertes")["megitelt_tamogatas"].sum().to_dict()
 
         # 📌 Maximális értékek skálázáshoz
         max_money_out = max(node_money_out.values(), default=1)
@@ -54,7 +54,7 @@ def display_nyertes_hallo():
         G = nx.DiGraph()
 
         for _, row in edges.iterrows():
-            G.add_edge(row["vezetoAjanlatkero"], row["vezetoAjanlattevo"], weight=row["weight"], money=row["megitelt_tamogatas"])
+            G.add_edge(row["vezetoAjanlatkero"], row["nyertes"], weight=row["weight"], money=row["megitelt_tamogatas"])
 
         # 📌 Pyvis hálózat beállítása
         net = Network(height="1200px", width="100%", directed=True, notebook=False)

@@ -25,7 +25,7 @@ def megbizok_hallo():
         # 📌 Adatok aggregálása
         edges = (
             data
-            .groupby(['vezetoAjanlatkero', 'vezetoAjanlattevo'], as_index=False)
+            .groupby(['vezetoAjanlatkero', 'nyertes'], as_index=False)
             .agg(
                 megitelt_tamogatas=('nettoOsszegHUF', 'sum'),
                 weight=('ekrAzonosito', 'count')
@@ -37,7 +37,7 @@ def megbizok_hallo():
 
         # 📌 Kiutalt (OUT) és beérkező (IN) pénz összegyűjtése
         node_money_out = edges.groupby("vezetoAjanlatkero")["megitelt_tamogatas"].sum().to_dict()
-        node_money_in = edges.groupby("vezetoAjanlattevo")["megitelt_tamogatas"].sum().to_dict()
+        node_money_in = edges.groupby("nyertes")["megitelt_tamogatas"].sum().to_dict()
 
         # 📌 Maximális értékek skálázáshoz
         max_money_out = max(node_money_out.values(), default=1)
@@ -48,13 +48,13 @@ def megbizok_hallo():
         G = nx.DiGraph()
 
         for _, row in edges.iterrows():
-            G.add_edge(row["vezetoAjanlatkero"], row["vezetoAjanlattevo"], weight=row["weight"], money=row["megitelt_tamogatas"])
+            G.add_edge(row["vezetoAjanlatkero"], row["nyertes"], weight=row["weight"], money=row["megitelt_tamogatas"])
 
         # 📌 Pyvis hálózat beállítása
         net = Network(height="1200px", width="100%", directed=True, notebook=False)
         net.toggle_physics(True)
 
-        for node in set(edges["vezetoAjanlatkero"]).union(edges["vezetoAjanlattevo"]):
+        for node in set(edges["vezetoAjanlatkero"]).union(edges["nyertes"]):
             money_sent = node_money_out.get(node, 0)  # Kiutalt pénz
             money_received = node_money_in.get(node, 0)  # Beérkező pénz
             size = max(10, (money_sent / max_money_out) * 50)  # Kiutalt pénz skálázott mérete, min 10

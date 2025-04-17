@@ -63,11 +63,21 @@ network_page_egyeni = st.Page(
     icon=":material/bar_chart:",
 )
 
+
+# --- Network ---
+network_export_page_egyeni = st.Page(
+    "views/view7_egyeni_hallo_fluorish.py",
+    title="Network export",
+    icon=":material/bar_chart:",
+)
+
+
+
 # --- NAVIGATION SETUP ---
 pg = st.navigation(
     {   'Kezdőlap': [home_page],
         "Adatok": [full_data_intro_page, filtered_data_intro_page,  data_page_megbizok, data_page_nyertesek], 
-        "Hálózat": [network_page_megbizok, network_page_nyertesek, network_page_egyeni],
+        "Hálózat": [network_page_megbizok, network_page_nyertesek, network_page_egyeni, network_export_page_egyeni],
     }
 )
 

@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Közbeszerzési Hálózat (Animált Kiemeléssel)</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        /* Basic styling for the page */
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden; /* Prevent scrollbars if graph is large */
+        }
+
+        /* Styling for the control area */
+        #controls {
+            padding: 10px 15px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 10; /* Ensure controls are above SVG */
+            display: flex;
+            flex-wrap: wrap; /* Allow controls to wrap on smaller screens */
+            gap: 15px; /* Spacing between control groups */
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        #controls label {
+            font-weight: bold;
+            white-space: nowrap; /* Prevent labels from breaking */
+        }
+
+        #company-select, #node-size-select {
+            padding: 5px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+        }
+
+        /* Button styling for zoom controls */
+        button {
+            padding: 5px 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #e0e0e0;
+        }
+
+        /* Styling for the SVG container */
+        #svg-container {
+            width: 95%;
+            flex-grow: 1; /* Allow SVG container to fill remaining space */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            border: 1px solid #ccc;
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Styling for graph nodes */
+        .node {
+            stroke: #333;
+            stroke-width: 1.5px;
+            cursor: pointer;
+            /* Enhanced transition for smoother, longer animations */
+            transition: r 0.5s cubic-bezier(0.17, 0.67, 0.83, 0.67), 
+                        fill 0.4s ease-out, 
+                        opacity 0.4s ease-out, 
+                        stroke 0.4s ease-out, 
+                        stroke-width 0.4s ease-out;
+        }
+
+        /* Styling for highlighted nodes (color/stroke part) */
+        .node.highlighted {
+            fill: #ffae42 !important; /* Bright orange highlight (important overrides base color scale) */
+            stroke: #cc5500;
+            stroke-width: 4px !important; /* Increased stroke width for better visibility */
+            filter: drop-shadow(0 0 8px rgba(255, 174, 66, 0.6)); /* Add glow effect to highlighted nodes */
+        }
+
+        /* Styling for graph links (edges) */
+        .link {
+            stroke-opacity: 0.6;
+            stroke: #555;
+            marker-end: url(#arrowhead); /* Attach arrowhead marker */
+            transition: opacity 0.15s ease-out;
+        }
+
+        /* Add keyframes for pulsing effect */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* Class for selected node with animation */
+        .node.pulse-animation {
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body>
+
+<div id="controls">
+    <div class="control-group">
+        <label for="company-select">Cég Kiemelése:</label>
+        <select id="company-select">
+            <option value="">-- Válassz --</option>
+        </select>
+    </div>
+    <div class="control-group">
+        <label for="node-size-select">Méret Alapja:</label>
+        <select id="node-size-select">
+            <option value="elnyert" selected>Elnyert Összeg</option>
+            <option value="kiutalt">Kiutalt Összeg</option>
+        </select>
+    </div>
+    <div class="control-group">
+        <button id="zoom-in">Nagyítás +</button>
+        <button id="zoom-out">Kicsinyítés -</button>
+        <button id="zoom-reset">Alaphelyzet</button>
+    </div>
+</div>
+
+<div id="svg-container">
+    <svg id="network-graph"></svg>
+</div>
+
+<script>
+    // --- 1. Data from Python ---
+    const rawData = /* PLACEHOLDER_FOR_DATA */;
+
+    // --- 2. Data Processing for D3 ---
+    const nodesMap = new Map();
+    function ensureNode(id) {
+        if (!nodesMap.has(id)) {
+            nodesMap.set(id, { id: id, totalWonAmount: 0, totalAssignedAmount: 0, type: 'unknown' });
+        }
+        return nodesMap.get(id);
+    }
+    rawData.forEach(d => {
+        const megbizoNode = ensureNode(d.megbizo);
+        const megbizottNode = ensureNode(d.megbizott);
+        megbizoNode.totalAssignedAmount += d.osszeg;
+        if (megbizoNode.type === 'unknown' || megbizoNode.type === 'megbizott') {
+            megbizoNode.type = (megbizoNode.type === 'megbizott') ? 'megbizo_is' : 'megbizo';
+        }
+        megbizottNode.totalWonAmount += d.osszeg;
+        if (megbizottNode.type === 'unknown' || megbizottNode.type === 'megbizo') {
+            megbizottNode.type = (megbizottNode.type === 'megbizo') ? 'megbizo_is' : 'megbizott';
+        }
+    });
+    const nodeList = Array.from(nodesMap.values());
+    const links = rawData.map(d => ({
+        source: nodesMap.get(d.megbizo), target: nodesMap.get(d.megbizott), amount: d.osszeg, tenders: d.palyazatokSzama
+    }));
+
+    // --- 3. SVG Setup ---
+    const svg = d3.select("#network-graph");
+    const svgContainer = d3.select("#svg-container");
+    let width = parseInt(svgContainer.style("width"));
+    let height = parseInt(svgContainer.style("height"));
+    if (!width || !height) {
+        width = window.innerWidth * 0.9; height = window.innerHeight * 0.75;
+        console.warn("SVG container dimensions not found, using fallback.");
+    }
+    svg.attr("viewBox", `0 0 ${width} ${height}`).attr("preserveAspectRatio", "xMidYMid meet");
+    const baseNodeRadius = 5;
+
+    // Add a group for zoom transformation
+    const zoomGroup = svg.append("g").attr("class", "zoom-group");
+    
+    // Set up zoom behavior
+    const zoom = d3.zoom()
+        .scaleExtent([0.1, 10])
+        .on("zoom", (event) => {
+            zoomGroup.attr("transform", event.transform);
+        });
+    
+    // Apply zoom to SVG
+    svg.call(zoom);
+    
+    // Zoom control buttons
+    d3.select("#zoom-in").on("click", () => {
+        svg.transition().duration(300).call(zoom.scaleBy, 1.5);
+    });
+    
+    d3.select("#zoom-out").on("click", () => {
+        svg.transition().duration(300).call(zoom.scaleBy, 0.75);
+    });
+    
+    d3.select("#zoom-reset").on("click", () => {
+        svg.transition().duration(300).call(
+            zoom.transform, 
+            d3.zoomIdentity.translate(0, 0).scale(1)
+        );
+    });
+
+    // --- 4. Scales ---
+    const maxWonAmount = d3.max(nodeList, d => d.totalWonAmount) || 1;
+    const maxAssignedAmount = d3.max(nodeList, d => d.totalAssignedAmount) || 1;
+    const radiusScale = d3.scaleSqrt().range([baseNodeRadius, baseNodeRadius * 7]);
+    const maxLinkAmount = d3.max(links, d => d.amount) || 1;
+    const strokeWidthScale = d3.scaleLinear().domain([0, maxLinkAmount]).range([1, 8]);
+    const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+    function getNodeSizeValue(nodeData) {
+        const sizeBasis = d3.select("#node-size-select").property("value");
+        return sizeBasis === 'elnyert' ? nodeData.totalWonAmount : nodeData.totalAssignedAmount;
+    }
+    radiusScale.domain([0, maxWonAmount]); // Initial domain
+
+    // --- 5. D3 Force Simulation ---
+    const simulation = d3.forceSimulation(nodeList)
+        .force("link", d3.forceLink(links).distance(90).strength(0.6))
+        .force("charge", d3.forceManyBody().strength(-120))
+        .force("center", d3.forceCenter(width / 2, height / 2))
+        .force("collision", d3.forceCollide().radius(d => radiusScale(getNodeSizeValue(d)) + 5));
+
+    // --- 6. Draw Elements ---
+    svg.append("defs").append("marker")
+        .attr("id", "arrowhead").attr("viewBox", "-0 -5 10 10").attr("refX", 19)
+        .attr("refY", 0).attr("orient", "auto").attr("markerWidth", 7)
+        .attr("markerHeight", 7).attr("xoverflow", "visible")
+        .append("svg:path").attr("d", "M 0,-5 L 10 ,0 L 0,5").attr("fill", "#555").style("stroke", "none");
+
+    // Helper function to format values in millions of HUF
+    function formatMillionHuf(amount) {
+        const millionsValue = amount / 1000000;
+        return millionsValue.toLocaleString('hu-HU', {maximumFractionDigits: 0, minimumFractionDigits: 0}) + ' millió Ft';
+    }
+
+    // Use zoomGroup instead of directly appending to SVG
+    const linkGroup = zoomGroup.append("g").attr("class", "links");
+    const nodeGroup = zoomGroup.append("g").attr("class", "nodes");
+
+    const link = linkGroup.selectAll("line").data(links).join("line")
+            .attr("class", "link").attr("stroke-width", d => strokeWidthScale(d.amount)).attr("marker-end", "url(#arrowhead)");
+
+    const node = nodeGroup.selectAll("circle").data(nodeList).join("circle")
+            .attr("class", "node").attr("r", d => radiusScale(getNodeSizeValue(d)))
+            .attr("fill", d => colorScale(d.id)).call(drag(simulation))
+            .on("mouseover", handleMouseOver).on("mouseout", handleMouseOut);
+
+    // --- Tooltips ---
+    node.append("title")
+        .text(d => `${d.id}\nElnyert: ${formatMillionHuf(d.totalWonAmount)}\nKiutalt: ${formatMillionHuf(d.totalAssignedAmount)}`);
+    
+    link.append("title")
+        .text(d => `${d.source.id} -> ${d.target.id}\nÖsszeg: ${formatMillionHuf(d.amount)}\nPályázatok: ${d.tenders}`);
+
+    // --- 7. Simulation Tick Event ---
+    simulation.on("tick", () => {
+        link.attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+        node.attr("cx", d => d.x).attr("cy", d => d.y);
+        node.attr("cx", d => d.x = Math.max(radiusScale(getNodeSizeValue(d)), Math.min(width - radiusScale(getNodeSizeValue(d)), d.x)))
+            .attr("cy", d => d.y = Math.max(radiusScale(getNodeSizeValue(d)), Math.min(height - radiusScale(getNodeSizeValue(d)), d.y)));
+    });
+
+    // --- 8. Drag Functionality ---
+    function drag(simulation) {
+        function dragstarted(event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
+        function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
+        function dragended(event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }
+        return d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
+    }
+
+    // --- 9. Interactivity ---
+    const hoverScale = 1.8; // Increased scale factor on hover (was 1.4)
+    const highlightScale = 2.2; // Increased scale factor for selected node (was 1.6)
+
+    function handleMouseOver(event, d) {
+        const currentRadius = radiusScale(getNodeSizeValue(d)); // Normal radius
+        const isHighlighted = d3.select(this).classed("highlighted");
+
+        // Filter associated links and nodes
+        const associatedLinks = link.filter(l => l.source === d || l.target === d);
+        const associatedNodeData = new Set([d]);
+        associatedLinks.each(l => { associatedNodeData.add(l.source); associatedNodeData.add(l.target); });
+
+        // Dim non-related elements
+        node.transition().duration(300).style("opacity", n => associatedNodeData.has(n) ? 1 : 0.2);
+        link.transition().duration(300).style("opacity", l => l.source === d || l.target === d ? 1 : 0.1);
+
+        // Enlarge the hovered node (relative to its normal size)
+        d3.select(this)
+          .raise()
+          .transition("mouseover") // Name the transition to avoid conflicts
+          .duration(400) // Increased duration (was 150)
+          .ease(d3.easeCubicOut) // Add easing function
+          .attr("r", currentRadius * hoverScale) // Always scale from normal radius
+          .style("opacity", 1);
+
+        associatedLinks.raise();
+    }
+
+    function handleMouseOut(event, d) {
+         const currentRadius = radiusScale(getNodeSizeValue(d)); // Normal radius
+         const isHighlighted = d3.select(this).classed("highlighted");
+
+         // Restore opacity
+         node.transition("opacity").duration(300).style("opacity", 1); // Increased duration (was 150)
+         link.transition("opacity").duration(300).style("opacity", 0.6); // Increased duration (was 150)
+
+         // Restore radius: to highlighted size or normal size
+         const targetRadius = isHighlighted ? currentRadius * highlightScale : currentRadius;
+         d3.select(this)
+           .transition("mouseout") // Name the transition
+           .duration(400) // Increased duration (was 150)
+           .ease(d3.easeCubicOut) // Add easing function
+           .attr("r", targetRadius); // Transition back to appropriate size
+
+         // Reset stroke width only if not highlighted
+         if (!isHighlighted) {
+            d3.select(this).style("stroke-width", "1.5px");
+         }
+    }
+
+    // Company filter change listener - ENHANCED for more dramatic animation
+    const companySelect = d3.select("#company-select");
+    companySelect.on("change", function(event) {
+        const selectedCompanyId = d3.select(this).property("value");
+
+        // Remove pulse animation from all nodes
+        node.classed("pulse-animation", false);
+
+        // Reset ALL nodes first: remove highlight class, reset fill and reset size
+        node.classed("highlighted", false)
+            .transition("select_reset") // Named transition
+            .duration(500) // Increased duration (was 200)
+            .ease(d3.easeBackOut) // Add elastic-like easing
+            .attr("r", d => radiusScale(getNodeSizeValue(d))) // Reset to normal size
+            .attr("fill", d => colorScale(d.id)) // Reset fill color
+            .style("stroke-width", "1.5px"); // Reset stroke width
+
+        // If a company is selected, highlight it (color + size)
+        if (selectedCompanyId) {
+            const selectedNode = node.filter(d => d.id === selectedCompanyId);
+            
+            selectedNode
+                .classed("highlighted", true) // Apply color/stroke style via class
+                .raise() // Raise immediately for better visibility during animation
+                .transition("select_highlight") // Named transition
+                .duration(800) // Much longer for emphasis (was 250)
+                .ease(d3.easeElasticOut.amplitude(1.2)) // Bouncy animation
+                .attr("r", d => radiusScale(getNodeSizeValue(d)) * highlightScale) // Animate to larger size
+                .on("end", function() { 
+                    // Add pulsing animation after the initial size increase
+                    d3.select(this).classed("pulse-animation", true);
+                });
+
+            // Also highlight direct connections more noticeably
+            const directLinks = link.filter(l => l.source.id === selectedCompanyId || l.target.id === selectedCompanyId);
+            directLinks.transition().duration(800)
+                .style("stroke", "#cc5500")
+                .style("stroke-opacity", 0.8)
+                .style("stroke-width", d => strokeWidthScale(d.amount) * 1.5);
+        }
+    });
+
+    // Node size basis change listener - UPDATED with enhanced animations
+    const nodeSizeSelect = d3.select("#node-size-select");
+    nodeSizeSelect.on("change", function(event) {
+        const selectedBasis = d3.select(this).property("value");
+        const selectedCompanyId = companySelect.property("value"); // Check if a node is highlighted
+
+        // Update radius scale domain
+        radiusScale.domain([0, selectedBasis === 'elnyert' ? maxWonAmount : maxAssignedAmount]);
+
+        // Update node radii with transition, considering highlighted node
+        node.transition("size_change")
+            .duration(600) // Increased duration (was 300)
+            .ease(d3.easeCubicInOut) // Smoother easing
+            .attr("r", d => {
+                const normalRadius = radiusScale(getNodeSizeValue(d));
+                // If this node is the selected one, apply highlight scale
+                return d.id === selectedCompanyId ? normalRadius * highlightScale : normalRadius;
+            });
+
+        // Update collision force radius
+        simulation.force("collision").radius(d => {
+             const normalRadius = radiusScale(getNodeSizeValue(d));
+             const targetRadius = d.id === selectedCompanyId ? normalRadius * highlightScale : normalRadius;
+             return targetRadius + 5; // Use target radius for collision
+        });
+
+        // Gently reheat simulation to adjust layout
+        simulation.alpha(0.2).restart(); // Increased alpha for more movement (was 0.1)
+    });
+
+    // --- Populate company dropdown ---
+    // Sort nodes by ID for better dropdown selection
+    const sortedNodes = [...nodeList].sort((a, b) => a.id.localeCompare(b.id));
+    
+    // Add each company to dropdown
+    sortedNodes.forEach(node => {
+        companySelect.append("option")
+            .attr("value", node.id)
+            .text(node.id);
+    });
+
+    // Optional: Handle window resize
+    window.addEventListener('resize', () => {
+        width = parseInt(svgContainer.style("width"));
+        height = parseInt(svgContainer.style("height"));
+         if (!width || !height) { width = window.innerWidth * 0.9; height = window.innerHeight * 0.75; }
+        svg.attr("viewBox", `0 0 ${width} ${height}`);
+        simulation.force("center", d3.forceCenter(width / 2, height / 2));
+        simulation.alpha(0.3).restart();
+    });
+
+    console.log("Network graph script initialized with animated highlight.");
+
+</script>
+
+</body>
+</html>

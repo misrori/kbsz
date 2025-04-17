@@ -14,7 +14,7 @@ def display_megbizok():
 
     grouped_df= (
         data
-        .groupby('vezetoAjanlattevo', as_index=False)
+        .groupby('nyertes', as_index=False)
         .agg(
             megitelt_tamogatas=('nettoOsszegHUF', 'sum'),
             number_of_projects=('ekrAzonosito', 'count')
@@ -26,10 +26,9 @@ def display_megbizok():
     )
 
     grouped_df['megitelt_tamogatas'] = (grouped_df['megitelt_tamogatas'] / 1_000_000_000).round(2)
-    fig = px.bar(grouped_df, y='vezetoAjanlattevo', x='megitelt_tamogatas',
-                labels={'vezetoAjanlattevo': 'Nyertes', 'megitelt_tamogatas': 'Megítélt összeg (milliárd Ft)'},
+    fig = px.bar(grouped_df, y='nyertes', x='megitelt_tamogatas',
+                labels={'nyertes': 'Nyertes', 'megitelt_tamogatas': 'Megítélt összeg (milliárd Ft)'},
                 title='Megítélt összeg nyertesenként', orientation='h' )
-
     fig.update_layout(
         barmode='stack',
         plot_bgcolor='white',
@@ -54,7 +53,7 @@ def display_megbizok():
 
     megbizottak_df = (
         data
-        .groupby('vezetoAjanlattevo')
+        .groupby('nyertes')
         .agg(
             megbizok_szama = ('vezetoAjanlatkero', 'nunique'),
             szerzodesek_szama = ('ekrAzonosito', 'count'),
@@ -70,7 +69,7 @@ def display_megbizok():
 
     megbizottak_df['osszes_megbizas_osszege'] = megbizottak_df['osszes_megbizas_osszege'] / 1_000_000
 
-    megbizottak_df.rename(columns={'vezetoAjanlattevo': 'Nyertes', 
+    megbizottak_df.rename(columns={'nyertes': 'Nyertes', 
                                 'megbizok_szama': 'Megbízók száma', 
                                 'szerzodesek_szama': 'Szerződések száma', 
                                 'osszes_megbizas_osszege': 'Összes megbízás összege (millió Ft)'}, 
